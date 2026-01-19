@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: logger-deployment
+  namespace: default
+  labels:
+    app: logger
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: logger
+  template:
+    metadata:
+      labels:
+        app: logger
+    spec:
+      serviceAccountName: logger-service-account
+      containers:
+      - name: logger
+        image: task-logger:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+          name: http
+        env:
+        - name: LOG_STORAGE_SIZE
+          valueFrom:
+            configMapKeyRef:
+              name: logger-config
+              key: storage_size
+        - name: APP_NAME
+          value: "logger-service"
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: logger-config
+              key: log_level
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "200m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 3
+          periodSeconds: 10

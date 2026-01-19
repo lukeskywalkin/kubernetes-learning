@@ -1,0 +1,63 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: frontend-config
+  namespace: default
+data:
+  index.html: |
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Task Manager</title>
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+            .container { max-width: 800px; margin: 0 auto; background: white; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); padding: 30px; }
+            h1 { color: #333; margin-bottom: 30px; text-align: center; }
+            .form-group { margin-bottom: 20px; }
+            input, textarea { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 5px; font-size: 16px; }
+            button { background: #667eea; color: white; padding: 12px 24px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; margin-right: 10px; }
+            .task-list { margin-top: 30px; }
+            .task-item { background: #f8f9fa; padding: 15px; margin-bottom: 10px; border-radius: 5px; border-left: 4px solid #667eea; }
+            #apiUrl { width: 100%; margin-bottom: 20px; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>📝 Task Manager</h1>
+            <input type="text" id="apiUrl" value="http://backend-service:5000">
+            <div id="status"></div>
+            <div class="form-group"><input type="text" id="taskTitle" placeholder="Enter task title..." /></div>
+            <div class="form-group"><textarea id="taskDescription" rows="3" placeholder="Description (optional)"></textarea></div>
+            <button onclick="createTask()">Add Task</button>
+            <button onclick="loadTasks()">Refresh</button>
+            <div class="task-list" id="taskList"></div>
+        </div>
+        <script>
+            function getApiUrl() { return document.getElementById('apiUrl').value || 'http://backend-service:5000'; }
+            function showStatus(m, t) { const s = document.getElementById('status'); s.textContent = m; s.className = `status ${t}`; setTimeout(() => { s.textContent = ''; s.className = ''; }, 3000); }
+            async function createTask() {
+                const title = document.getElementById('taskTitle').value;
+                if (!title) { showStatus('Title required!', 'error'); return; }
+                try {
+                    const r = await fetch(`${getApiUrl()}/api/tasks`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({title, description: document.getElementById('taskDescription').value}) });
+                    if (r.ok) { document.getElementById('taskTitle').value = ''; document.getElementById('taskDescription').value = ''; loadTasks(); } 
+                    else { const e = await r.json(); showStatus(`Error: ${e.error}`, 'error'); }
+                } catch (e) { showStatus(`Error: ${e.message}`, 'error'); }
+            }
+            async function loadTasks() {
+                try { const r = await fetch(`${getApiUrl()}/api/tasks`); if (r.ok) { const d = await r.json(); displayTasks(d.tasks || []); } } catch (e) { showStatus(`Error: ${e.message}`, 'error'); }
+            }
+            async function toggleTask(id, status) { try { await fetch(`${getApiUrl()}/api/tasks/${id}`, {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({completed: !status})}); loadTasks(); } catch (e) { showStatus(`Error: ${e.message}`, 'error'); } }
+            async function deleteTask(id) { if (!confirm('Delete?')) return; try { await fetch(`${getApiUrl()}/api/tasks/${id}`, {method: 'DELETE'}); loadTasks(); } catch (e) { showStatus(`Error: ${e.message}`, 'error'); } }
+            function displayTasks(tasks) {
+                const list = document.getElementById('taskList');
+                if (tasks.length === 0) { list.innerHTML = '<p>No tasks yet.</p>'; return; }
+                list.innerHTML = tasks.map(t => `<div class="task-item"><div><strong>${t.title}</strong>${t.description ? '<br>' + t.description : ''}</div><button onclick="toggleTask(${t.id}, ${t.completed})">${t.completed ? 'Undo' : 'Complete'}</button><button onclick="deleteTask(${t.id})">Delete</button></div>`).join('');
+            }
+            loadTasks(); setInterval(loadTasks, 5000);
+        </script>
+    </body>
+    </html>

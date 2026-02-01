@@ -88,7 +88,7 @@ def get_tasks():
         if not redis_client:
             return jsonify({"error": "Database not available"}), 503
         
-        task_keys = redis_client.keys("task:*")
+        task_keys = [k for k in redis_client.keys("task:*") if k != "task:counter"]
         tasks = []
         for key in task_keys:
             task_data = redis_client.get(key)

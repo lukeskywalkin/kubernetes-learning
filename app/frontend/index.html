@@ -107,21 +107,12 @@
             background: #d4edda;
             color: #155724;
         }
-        #apiUrl {
-            width: 100%;
-            margin-bottom: 20px;
-        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>📝 Task Manager</h1>
         
-        <div class="form-group">
-            <label>API URL:</label>
-            <input type="text" id="apiUrl" value="http://backend-service:5000" placeholder="http://backend-service:5000">
-        </div>
-
         <div id="status"></div>
 
         <div class="form-group">
@@ -137,20 +128,6 @@
     </div>
 
     <script>
-        const API_URL_KEY = 'task_manager_api_url';
-        
-        // Load saved API URL
-        const savedUrl = localStorage.getItem(API_URL_KEY);
-        if (savedUrl) {
-            document.getElementById('apiUrl').value = savedUrl;
-        }
-
-        function getApiUrl() {
-            const url = document.getElementById('apiUrl').value || 'http://backend-service:5000';
-            localStorage.setItem(API_URL_KEY, url);
-            return url;
-        }
-
         function showStatus(message, type) {
             const statusDiv = document.getElementById('status');
             statusDiv.textContent = message;
@@ -171,7 +148,7 @@
             }
 
             try {
-                const response = await fetch(`${getApiUrl()}/api/tasks`, {
+                const response = await fetch(`/api/tasks`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -195,7 +172,7 @@
 
         async function loadTasks() {
             try {
-                const response = await fetch(`${getApiUrl()}/api/tasks`);
+                const response = await fetch(`/api/tasks`);
                 if (response.ok) {
                     const data = await response.json();
                     displayTasks(data.tasks || []);
@@ -209,7 +186,7 @@
 
         async function toggleTask(taskId, currentStatus) {
             try {
-                const response = await fetch(`${getApiUrl()}/api/tasks/${taskId}`, {
+                const response = await fetch(`/api/tasks/${taskId}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
@@ -233,7 +210,7 @@
             }
 
             try {
-                const response = await fetch(`${getApiUrl()}/api/tasks/${taskId}`, {
+                const response = await fetch(`/api/tasks/${taskId}`, {
                     method: 'DELETE',
                 });
 

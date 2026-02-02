@@ -57,7 +57,7 @@ spec:
           limits:
             memory: "256Mi"
             cpu: "500m"
-        livenessProbe:
+        livenessProbe:  #Liveness Probe is used to check if the container is running and healthy.
           httpGet:
             path: /health
             port: 5000
@@ -65,7 +65,7 @@ spec:
           periodSeconds: 30
           timeoutSeconds: 5
           failureThreshold: 3
-        readinessProbe:
+        readinessProbe: #Readiness Probe is used to check if the container is ready to serve requests.
           httpGet:
             path: /ready
             port: 5000

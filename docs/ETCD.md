@@ -351,6 +351,66 @@ kubectl logs -n kube-system kube-apiserver-minikube
 2. Delete a namespace: `kubectl delete ns test`
 3. Restore from YAML: `kubectl apply -f backup.yaml`
 4. Understand what's preserved and what's not
+---
+
+#### Exercise 1: Understand Data Flow
+
+**Steps:**
+
+1. Create a pod: `kubectl run test --image=nginx`
+2. Watch events: `kubectl get events -w`
+3. Trace the flow: API Server → etcd → Scheduler → Kubelet
+4. Document each step
+
+**What to Observe:**
+
+- **Pod creation:** Watch the event stream for a "pod scheduled" message after issuing the create command.
+- **API request:** Notice that your `kubectl run` creates an API request that is processed by the API Server.
+- **etcd persistence:** The API Server writes the new Pod object into etcd. This isn't directly visible, but you will see your pod listed on subsequent `kubectl get pods` queries.
+- **Scheduling:** The Scheduler notices unscheduled pods (via etcd’s watch), assigns one to your Node, and records this back to etcd.
+- **Kubelet reaction:** The Kubelet (on your node) observes the new scheduled Pod (again, via API Server/etcd), and starts the container.
+- **Progression in events:** Watch for `Scheduled`, `Pulled`, `Created`, and `Started` events for your pod.
+- **You should see:** A sequence of events in `kubectl get events -w` that reflect the above steps; your pod should transition from Pending → Running.
+
+---
+
+#### Exercise 2: Observe etcd Updates
+
+**Steps:**
+
+1. Create a ConfigMap
+2. Update the ConfigMap
+3. Watch pod events to see how kubelet reacts
+4. Understand how etcd changes propagate
+
+**What to Observe:**
+
+- **ConfigMap creation:** A new ConfigMap is registered by the API Server and written to etcd.
+- **ConfigMap update:** Updating the ConfigMap causes a change in etcd; you can confirm the update by describing the ConfigMap (`kubectl describe configmap ...`) or using `kubectl get configmap ... -o yaml` to see the new values.
+- **Pod reactions:** If you have any pods mounting this ConfigMap, note that the default Kubernetes behavior is that the config will be updated in the pod's filesystem if it is mounted as a volume (with some delay, usually up to a minute).
+- **Events:** Watch for events that might be triggered by ConfigMap changes (e.g., pod restarts if they are managed by something like a Deployment using `configmapKeyRef` in environment or using restart-on-change logic).
+- **You should see:** Immediate reflection of ConfigMap changes when queried, and—if relevant—logs or events indicating how/when pods notice and react to the change.
+
+---
+
+#### Exercise 3: Backup Simulation
+
+**Steps:**
+
+1. Export all resources: `kubectl get all -o yaml > backup.yaml`
+2. Delete a namespace: `kubectl delete ns test`
+3. Restore from YAML: `kubectl apply -f backup.yaml`
+4. Understand what's preserved and what's not
+
+**What to Observe:**
+
+- **Backup file:** The YAML file will contain representations of your current pods, services, deployments, etc.
+- **After deletion:** The `test` namespace and all its resources vanish; `kubectl get pods -n test` should show nothing.
+- **Restore process:** `kubectl apply -f backup.yaml` attempts to recreate objects from the YAML manifest.
+- **Not everything returns:** Some "cluster-scoped" objects (like PersistentVolumes) may not be properly restored if they aren’t namespaced, and ephemeral data (in containers, logs, node-local files) will not return. Resource versions and dynamic assignments (like pod IP addresses) will be new.
+- **You should see:** After restore, original Deployments/Pods/Services appear back in `kubectl get pods,svc -n test`—but note any objects not restored, and whether workloads pick up where they left off or start from scratch.
+
+---
 
 ## Key Takeaways
 

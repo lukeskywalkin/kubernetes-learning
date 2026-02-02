@@ -1,3 +1,8 @@
+# This VirtualService applies to MESH-INTERNAL traffic only: when a pod inside the mesh
+# (e.g. frontend) calls backend-service, these routing rules apply (canary header → v2, else → v1).
+# We do NOT reference the Gateway here—so this does not route traffic that entered through
+# the Istio ingress gateway. To route external traffic (Gateway → frontend), see
+# virtualservice-frontend.yaml, which references the Gateway and sends traffic to the frontend.
 apiVersion: networking.istio.io/v1beta1
 kind: VirtualService
 metadata:

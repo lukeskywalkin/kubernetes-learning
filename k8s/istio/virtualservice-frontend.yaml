@@ -1,0 +1,20 @@
+# Routes traffic that ENTERS the mesh through the Gateway to the frontend.
+# When a user hits the Istio ingress gateway (e.g. port 80), this VirtualService
+# sends that traffic to frontend-service. Without this, the Gateway would accept
+# traffic but have no route—you'd get 404. The backend is then reached by the
+# frontend (or browser via frontend's nginx proxy) calling backend-service inside the mesh.
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: frontend-virtualservice
+  namespace: default
+spec:
+  hosts:
+  - "*"
+  gateways:
+  - task-manager-gateway
+  http:
+  - route:
+    - destination:
+        host: frontend-service
+      weight: 100

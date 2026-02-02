@@ -1,3 +1,5 @@
+# DISCLAIMER: This repo is a bit of an incoherent mess. It was created so that I could learn Kubernetes interactively, and track my learning progress in the documentation. Please do not judge the contents of this repository as a reflection of my code quality 😊
+
 # Kubernetes Learning Environment
 
 A comprehensive Kubernetes cluster setup designed for learning DevOps and Kubernetes concepts through hands-on practice. This repository includes a multi-service application with intentional bugs and missing features that you'll fix to master Kubernetes.

@@ -1,11 +1,22 @@
+# Gateway configures *how* the Istio ingress gateway pod listens (port, protocol, hosts).
+# It does NOT route traffic by itself. VirtualServices that reference this Gateway (or the
+# same host) define where traffic goes (e.g. to frontend-service or backend-service).
 apiVersion: networking.istio.io/v1beta1
 kind: Gateway
 metadata:
   name: task-manager-gateway
   namespace: default
 spec:
+  # selector: LOOKS FOR pods that already have this label. We are NOT creating a gateway
+  # with this label. When you install Istio, it deploys an "ingress gateway" deployment
+  # whose pods have label istio=ingressgateway. This Gateway resource says: "Apply the
+  # 'servers' config below to those existing pods." So the selector picks which Envoy proxy
+  # (the ingress gateway pod) gets this listen config.
   selector:
     istio: ingressgateway
+  # servers: What this gateway listens for. Traffic that arrives at the ingress gateway
+  # on port 80 (HTTP) for any host (*) will be accepted here; then a VirtualService
+  # (bound to this gateway or matching the request host) decides which service to route to.
   servers:
   - port:
       number: 80

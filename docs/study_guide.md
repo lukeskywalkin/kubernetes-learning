@@ -51,6 +51,154 @@ tolerations:
 
 The above toleration means that the pod can be placed on nodes with the taint "node-role.kubernetes.io/control-plane" and the effect "NoSchedule"
 
+## Scaling the Cluster
+Scaling your Kubernetes cluster can be accomplished both **manually** (adding/removing nodes yourself) or **automatically** (using cluster autoscaling).
+
+### 1. Manual Scaling
+
+**In managed Kubernetes (GKE, EKS, AKS, etc.):**
+
+You can manually scale the number of nodes in a node pool/group.
+
+- **GKE (Google Kubernetes Engine):**
+    ```bash
+    # Set node pool size to 5
+    gcloud container clusters resize <CLUSTER_NAME> --node-pool <NODE_POOL_NAME> --num-nodes 5
+    ```
+
+- **EKS (AWS):**
+    Adjust the desired size in the node group (via AWS Console or CLI).
+
+    ```bash
+    # Update desired node count to 3
+    aws eks update-nodegroup-config --cluster-name <CLUSTER_NAME> --nodegroup-name <NODE_GROUP_NAME> --scaling-config desiredSize=3
+    ```
+
+- **AKS (Azure):**
+    ```bash
+    # Set node pool size to 4
+    az aks nodepool scale --resource-group <RESOURCE_GROUP> --cluster-name <CLUSTER_NAME> --name <NODEPOOL_NAME> --node-count 4
+    ```
+
+**In Minikube, Kind, or kubeadm:**
+
+- **Minikube:**  
+    ```bash
+    # Add a node to your minikube cluster
+    minikube node add
+    ```
+- **Kind:**  
+    You need to create a new cluster or edit cluster config, as scaling nodes dynamically is less common.
+
+### 2. Automatically: Cluster Autoscaler
+
+The **Cluster Autoscaler** is a Kubernetes component that automatically adjusts the number of nodes in your cluster when pods fail to launch due to insufficient resources or when nodes are underutilized.
+
+- In managed clouds (GKE, EKS, AKS), autoscaling can typically be enabled/managed via the provider dashboard or CLI.
+
+    - **GKE:**  
+      Autoscaling can be enabled when creating a node pool:  
+      ```bash
+      gcloud container node-pools create <POOL_NAME> \
+        --cluster=<CLUSTER_NAME> \
+        --enable-autoscaling --min-nodes=1 --max-nodes=5 ...
+      ```
+
+    - **EKS/AKS:**  
+      Enable autoscaling on the node group via the web UI or CLI.
+
+- **On Self-hosted clusters:**  
+    Deploy the [Cluster Autoscaler](https://github.com/kubernetes/autoscaler/tree/master/cluster-autoscaler) as a deployment to your cluster.
+
+    Example (for AWS, see the repo for details for your cloud/infra):
+    ```bash
+    kubectl apply -f https://raw.githubusercontent.com/kubernetes/autoscaler/master/cluster-autoscaler/cloudprovider/aws/examples/cluster-autoscaler-autodiscover.yaml
+    ```
+
+    Remember to set the correct cloud provider and IAM permissions.
+
+### Key notes
+
+- **Scaling Nodes vs Pods:**  
+    - Node scaling changes the number of _worker machines_.  
+    - Pod scaling means changing the number of replicas — see `kubectl scale` or `Horizontal Pod Autoscaler`.
+
+- **Cluster Autoscaler is for nodes**, not for scaling the number of pods for your Deployments (see HPA below).
+
+---
+
+#### Scaling Deployments/Pods (Horizontal Pod Autoscaler)
+
+To automatically scale the number of pods in a Deployment based on CPU/RAM:
+
+```bash
+kubectl autoscale deployment <DEPLOYMENT_NAME> --cpu-percent=50 --min=1 --max=10
+```
+
+This creates a **Horizontal Pod Autoscaler** (HPA), which adjusts pod counts as needed.
+
+**Check HPA status:**
+```bash
+kubectl get hpa
+```
+
+**Manual scale pods:**
+```bash
+kubectl scale deployment <DEPLOYMENT_NAME> --replicas=5
+```
+
+---
+
+## Deployment Rollout Strategy
+
+When a Deployment is updated (e.g. new image, env change), Kubernetes needs a rule for **how** to replace old pods with new ones. That rule is the **rollout strategy**.
+
+### Strategy types
+
+**`RollingUpdate` (default):** New pods are created gradually and old ones are terminated as the new ones become Ready. Traffic stays available during the rollout.
+
+**`Recreate`:** All old pods are terminated first, then new pods are created. There is a period where no pods are running—use only when you must replace everything at once (e.g. schema change, incompatible versions).
+
+### Configuring in a Deployment
+
+If you omit `spec.strategy`, Kubernetes uses `RollingUpdate` with default values. To set it explicitly:
+
+```yaml
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1        # How many extra pods can exist over desired count during rollout
+      maxUnavailable: 0  # How many pods can be unavailable during rollout
+```
+
+**`maxSurge`:** Maximum number of pods above `replicas` that can be running during the rollout. Can be a number (e.g. `1`) or a percentage (e.g. `25%`). Default is 25%.
+
+**`maxUnavailable`:** Maximum number of pods that can be unavailable (not Ready) during the rollout. Can be a number or percentage. Default is 25%.
+
+**Examples:**
+- `maxSurge: 1`, `maxUnavailable: 0` → One new pod at a time, never reduce available capacity (safe, slower).
+- `maxSurge: 0`, `maxUnavailable: 1` → One old pod terminated, then one new one created (no extra pods, still rolling).
+- `strategy.type: Recreate` → All old pods deleted, then all new pods created (downtime).
+
+### Useful rollout commands
+
+```bash
+kubectl rollout status deployment <name>   # Watch until rollout completes
+kubectl rollout history deployment <name> # List revisions
+kubectl rollout undo deployment <name>    # Roll back to previous revision
+kubectl rollout restart deployment <name> # Restart pods (e.g. after ConfigMap change)
+```
+
+---
+
+**References:**
+- [Kubernetes Cluster Autoscaler](https://github.com/kubernetes/autoscaler/tree/master/cluster-autoscaler)
+- [Horizontal Pod Autoscaler](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/)
+- [Deployment strategy](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy)
+
+
 
 ## Common Debugging Scenarios
 

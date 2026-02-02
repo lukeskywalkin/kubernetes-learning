@@ -56,6 +56,7 @@ metadata:
 **Learning**: Service accounts are the foundation of IRSA.
 
 ### 2. RBAC (Role-Based Access Control)
+This is used
 
 Service accounts are bound to Kubernetes roles:
 

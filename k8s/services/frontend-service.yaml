@@ -6,7 +6,10 @@ metadata:
   labels:
     app: frontend
 spec:
-  type: NodePort
+  # ClusterIP is enough: traffic reaches the frontend via Istio Gateway → VirtualService,
+  # so the Gateway pod (inside the cluster) talks to this service by DNS. No need to
+  # expose a NodePort for direct external access.
+  type: ClusterIP
   ports:
   - port: 80
     targetPort: 80
